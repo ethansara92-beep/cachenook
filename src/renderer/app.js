@@ -967,11 +967,12 @@ function renderFiles() {
       )
     : files.items;
 
+  const fileWord = files.items.length === 1 ? 'file' : 'files';
   const line = scanning
     ? tt('Looking for files over {mb} MB…', 'Đang tìm file trên {mb} MB…', { mb: files.minMB })
     : files.items.length > 0
       ? tt(
-          '{n} files over {mb} MB, outside Library folders.',
+          `{n} ${fileWord} over {mb} MB, outside Library folders.`,
           '{n} file trên {mb} MB, ngoài các thư mục Library.',
           { n: files.items.length, mb: files.minMB },
         )
@@ -1052,7 +1053,7 @@ function renderFiles() {
           )}" value="${esc(files.query)}" autocomplete="off" spellcheck="false" />
         </div>
         <span class="group-meta" id="file-count">${tt(
-          '{n} of {total} files',
+          `{n} of {total} ${files.items.length === 1 ? 'file' : 'files'}`,
           '{n}/{total} file',
           { n: formatCount(visible.length), total: formatCount(files.items.length) },
         )}</span>
@@ -2232,7 +2233,7 @@ function openStalePreview(summary) {
     sub:
       items.length > 0
         ? tt(
-            '{size} in {n} folders with no activity for {days}+ days.',
+            `{size} in {n} ${items.length === 1 ? 'folder' : 'folders'} with no activity for {days}+ days.`,
             '{size} trong {n} thư mục không hoạt động {days}+ ngày.',
             { size: formatBytes(summary.totalFreed), n: items.length, days: summary.days },
           )

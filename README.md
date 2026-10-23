@@ -6,6 +6,8 @@ CacheNook finds the build junk that accumulates inside real projects, shows exac
 
 ![CacheNook](assets/app.png)
 
+See the [full feature tour with screenshots](docs/features.md) or the [Vietnamese version](docs/features.vi.md).
+
 ## Why another cleaner
 
 General cleaners are good at system caches and Xcode. They do not know that `node_modules` belongs to a repo with uncommitted changes, or that a stale `.venv` is safer to remove than an active one. CacheNook is built around that distinction:

@@ -2,7 +2,7 @@
 
 CacheNook được xây quanh một ý tưởng: công cụ dọn dẹp phải hiểu các project trên ổ, không chỉ biết cache hệ thống.
 
-Ảnh chụp trong cửa sổ 1080 x 780. Máy demo chưa cấp Full Disk Access nên các mục trong `~/Library` bị ẩn ở ảnh Cleanup. Cấp quyền để thấy app caches, Xcode, Mail downloads và iPhone backups.
+Ảnh chụp từ cùng một bản app ở các trạng thái quyền khác nhau. Ảnh Cleanup hiện đầy đủ nhóm System khi đã cấp Full Disk Access. Ảnh Large files được chụp khi chưa cấp quyền Desktop, Documents và Downloads để không lộ file cá nhân; các thư mục đó bị bỏ qua, không phải mất.
 
 ## Dọn dẹp
 
@@ -12,7 +12,7 @@ CacheNook được xây quanh một ý tưởng: công cụ dọn dẹp phải h
 - Mỗi dòng có checkbox, nhãn rủi ro và dung lượng chính xác.
 - `Safe` là mục tự tạo lại được. `Review` là mục nên xem trước.
 - Footer chỉ hiện khi có mục được chọn.
-- Ghi chú Full Disk Access ở cuối danh sách chỉ là lối tắt, không phải lỗi.
+- Cache hệ thống chỉ hiện sau khi cấp Full Disk Access.
 
 ## Chi tiết target
 
@@ -46,6 +46,7 @@ Các file trên ngưỡng, ngoài `~/Library`, `node_modules`, `.git` và app bu
 - `Reveal` mở file trong Finder.
 - Xoá sẽ chuyển vào Thùng rác, vẫn khôi phục được.
 - Ngưỡng chỉnh trong Cài đặt.
+- Ảnh này chụp khi chưa cấp quyền Desktop, Documents, Downloads. Các thư mục đó bị bỏ qua, không phải mất.
 
 ## Cài đặt
 

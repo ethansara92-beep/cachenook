@@ -2,7 +2,7 @@
 
 CacheNook is built around one idea: a cleanup tool should understand the projects on your disk, not just the system caches Apple already knows about.
 
-Screenshots were taken in a 1080 x 780 window. The demo Mac did not have Full Disk Access, so targets inside `~/Library` are hidden in the cleanup screenshots. Grant Full Disk Access to show app caches, Xcode data, Mail downloads and iOS backups.
+Screenshots come from the same build in different permission states. Cleanup shows the full System group with Full Disk Access. The large-file view is shown without access to Desktop, Documents and Downloads so personal files stay out of the docs. Grant access to include them.
 
 ## Cleanup
 
@@ -12,7 +12,7 @@ Screenshots were taken in a 1080 x 780 window. The demo Mac did not have Full Di
 - Each row has a checkbox, a risk label and an exact size.
 - `Safe` items are rebuilt by the app. `Review` items contain data you may want to inspect first.
 - The footer only appears when something is selected.
-- The note at the bottom is the Full Disk Access shortcut, not an error.
+- System caches appear only after Full Disk Access is granted.
 
 ## Target details
 
@@ -46,6 +46,7 @@ Files above the configured threshold, outside `~/Library`, `node_modules`, `.git
 - `Reveal` opens the file in Finder.
 - Removal moves files to the Trash, so they stay recoverable.
 - The threshold is configurable from Settings.
+- This screenshot is taken without access to Desktop, Documents and Downloads. Those folders are skipped, not missing.
 
 ## Settings
 

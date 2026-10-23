@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "smoke": "CACHENOOK_SMOKE=1 electron .",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "pack": "electron-packager . CacheNook --platform=darwin --arch=arm64 --out=dist --overwrite --asar --app-bundle-id=com.cachenook.app --icon=assets/icon.icns --ignore=^/dist --ignore=^/test --ignore=^/assets/icon.iconset",
     "stale:preview": "node bin/stale-clean.js",
     "stale:apply": "node bin/stale-clean.js --apply",

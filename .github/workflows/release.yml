@@ -27,52 +27,12 @@ jobs:
       - name: Verify version
         run: test "$(node -p "require('./package.json').version")" = "${{ inputs.version }}"
 
-      - name: Import signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
-        env:
-          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          echo "$APPLE_CERTIFICATE_P12_BASE64" | base64 -D > "$RUNNER_TEMP/cert.p12"
-          security create-keychain -p actions "$RUNNER_TEMP/build.keychain"
-          security default-keychain -s "$RUNNER_TEMP/build.keychain"
-          security unlock-keychain -p actions "$RUNNER_TEMP/build.keychain"
-          security import "$RUNNER_TEMP/cert.p12" -k "$RUNNER_TEMP/build.keychain" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: \
-            -s -k actions "$RUNNER_TEMP/build.keychain"
-
-      - name: Build app
-        run: npm run pack
-
-      - name: Sign app
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
-        env:
-          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
-        run: |
-          codesign --force --deep --options runtime \
-            --sign "$DEVELOPER_ID_APPLICATION" \
-            dist/CacheNook-darwin-arm64/CacheNook.app
-          codesign --verify --deep --strict --verbose=2 \
-            dist/CacheNook-darwin-arm64/CacheNook.app
+      - run: npm run pack
 
       - name: Build DMG
         env:
           SKIP_PACK: 1
         run: npm run dmg
-
-      - name: Notarize DMG
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        run: |
-          VERSION="$(node -p "require('./package.json').version")"
-          xcrun notarytool submit "dist/CacheNook-${VERSION}.dmg" \
-            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
-          xcrun stapler staple "dist/CacheNook-${VERSION}.dmg"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -89,4 +49,4 @@ jobs:
           gh release create "v${{ inputs.version }}" \
             dist/CacheNook-*.dmg dist/CacheNook-*.dmg.sha256 \
             --title "CacheNook ${{ inputs.version }}" \
-            --notes "See docs/release.md. Builds are signed and notarized only when the signing secrets are configured."
+            --notes "Unsigned build. See docs/release.md for signing and notarization."

@@ -188,16 +188,7 @@ The scanner is read-only. A separate safety validator resolves paths and checks 
 
 ## Release and signing
 
-The GitHub workflow builds an unsigned DMG by default. For a signed, notarized release, provide these repository secrets:
-
-- `APPLE_CERTIFICATE_P12_BASE64`
-- `APPLE_CERTIFICATE_PASSWORD`
-- `DEVELOPER_ID_APPLICATION`
-- `APPLE_ID`
-- `APPLE_APP_SPECIFIC_PASSWORD`
-- `APPLE_TEAM_ID`
-
-See [docs/release.md](docs/release.md) for the exact `codesign`, `notarytool` and `stapler` commands.
+The release workflow builds an unsigned DMG. For a signed, notarized release, follow [docs/release.md](docs/release.md). You need a Developer ID Application certificate, an Apple ID, a team ID and an app-specific password. The commands are `codesign`, `notarytool submit` and `stapler staple`.
 
 ## Contributing
 

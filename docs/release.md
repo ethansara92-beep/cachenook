@@ -47,16 +47,7 @@ xcrun stapler staple "dist/CacheNook-$(node -p "require('./package.json').versio
 
 ## GitHub release
 
-The release workflow is manual (`workflow_dispatch`) and builds an unsigned DMG unless the signing secrets are configured:
-
-- `APPLE_CERTIFICATE_P12_BASE64`
-- `APPLE_CERTIFICATE_PASSWORD`
-- `DEVELOPER_ID_APPLICATION`
-- `APPLE_ID`
-- `APPLE_APP_SPECIFIC_PASSWORD`
-- `APPLE_TEAM_ID`
-
-Store them under Settings > Secrets and variables > Actions.
+The release workflow is manual (`workflow_dispatch`) and builds an unsigned DMG. Sign and notarize locally with the commands above, then upload the artifacts to the release. Add the signing secrets to your own fork or CI if you want to automate it; do not commit certificates or passwords.
 
 ## Version
 

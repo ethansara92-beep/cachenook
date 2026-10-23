@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a cleanup target, safety guard, or UI improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include the paths or project folders involved.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      options:
+        - Safe to rebuild automatically
+        - Needs review before deleting
+        - Destructive, should be opt-in only
+    validations:
+      required: true

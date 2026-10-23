@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>CacheNook</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="window-head">
+        <div class="head-actions">
+          <button class="icon-button" id="rescan-button" type="button" aria-label="Scan again" title="Scan again">
+            <span class="icon" style="--icon: url(icons/refresh.svg)"></span>
+          </button>
+          <button class="icon-button" id="settings-button" type="button" aria-label="Settings" title="Settings">
+            <span class="icon" style="--icon: url(icons/settings.svg)"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main">
+        <div class="scroll" id="scroll">
+          <div class="page">
+            <nav class="section-switch" role="tablist" aria-label="Sections">
+              <button class="tab is-active" data-view="clean" type="button" role="tab" aria-selected="true">
+                Cleanup
+              </button>
+              <button class="tab" data-view="projects" type="button" role="tab" aria-selected="false">
+                Projects
+              </button>
+              <button class="tab" data-view="files" type="button" role="tab" aria-selected="false">
+                Large files
+              </button>
+            </nav>
+            <div class="banner" id="banner" role="status" hidden></div>
+            <section class="view" id="view" aria-live="polite"></section>
+          </div>
+        </div>
+        <footer class="actionbar" id="actionbar"></footer>
+      </main>
+    </div>
+
+    <div class="modal-root" id="modal-root"></div>
+    <div class="toast-root" id="toast-root" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

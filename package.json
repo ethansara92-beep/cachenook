@@ -1,0 +1,45 @@
+{
+  "name": "cachenook",
+  "productName": "CacheNook",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Git-aware cleanup for developer caches on macOS.",
+  "main": "src/main/main.js",
+  "author": "CacheNook contributors",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "CACHENOOK_SMOKE=1 electron .",
+    "test": "node --test test/",
+    "pack": "electron-packager . CacheNook --platform=darwin --arch=arm64 --out=dist --overwrite --asar --app-bundle-id=com.cachenook.app --icon=assets/icon.icns --ignore=^/dist --ignore=^/test --ignore=^/assets/icon.iconset",
+    "stale:preview": "node bin/stale-clean.js",
+    "stale:apply": "node bin/stale-clean.js --apply",
+    "check": "find src bin test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "dmg": "bash scripts/build-dmg.sh"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@tabler/icons": "^3.34.0",
+    "electron": "^45.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethansara92-beep/cachenook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ethansara92-beep/cachenook/issues"
+  },
+  "homepage": "https://github.com/ethansara92-beep/cachenook#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "macos",
+    "cleanup",
+    "disk-space",
+    "developer-tools",
+    "node_modules",
+    "xcode",
+    "electron"
+  ]
+}

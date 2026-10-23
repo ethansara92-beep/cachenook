@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#2b4a37"/>
+      <stop offset="1" stop-color="#14271c"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="lift" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#08150e" flood-opacity="0.4"/>
+    </filter>
+    <clipPath id="card">
+      <rect x="0" y="0" width="1024" height="1024" rx="230"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(100 100) scale(0.8046875)">
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="560" fill="url(#gloss)" clip-path="url(#card)"/>
+  <rect x="1.5" y="1.5" width="1021" height="1021" rx="229" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="3"/>
+
+  <g filter="url(#lift)">
+    <path d="M718.7 436.8 A220 220 0 1 1 473.8 295.3"
+          fill="none" stroke="#f4efe3" stroke-width="88" stroke-linecap="round"/>
+    <path d="M522.5 212.2 A300 300 0 0 1 734.9 311.3"
+          fill="none" stroke="#e0895f" stroke-width="64" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>

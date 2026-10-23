@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in CacheNook is broken or unsafe
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For a security issue, use the private advisory instead: https://github.com/ethansara92-beep/cachenook/security/advisories/new
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include the exact preview or cleanup flow.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: 15.3
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: CacheNook version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Projects
+        2. Select ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove private paths if needed.

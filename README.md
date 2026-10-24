@@ -103,7 +103,7 @@ CacheNook is deliberately conservative:
 - Personal files are never removed automatically; they need selection and confirmation.
 - Protected paths and app bundles are rejected even if a rule is wrong.
 - Smart sort only contacts the endpoint you configure, only when you press it, and sends metadata rather than file contents.
-- The AI API key is stored encrypted with the macOS Keychain. It is not written to config, logs or icons.
+- The AI API key is stored encrypted with the macOS Keychain. It is not written to config or logs, and never sent to the renderer.
 - No telemetry, no analytics, no network access during a scan or an update check other than the URL you ask for.
 - All state stays in `~/Library/Application Support/CacheNook`.
 

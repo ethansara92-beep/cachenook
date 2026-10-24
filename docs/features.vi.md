@@ -128,8 +128,8 @@ Nhập URL manifest JSON:
 
 ```json
 {
-  "version": "1.2.0",
-  "url": "https://example.com/CacheNook-1.2.0.dmg",
+  "version": "1.2.1",
+  "url": "https://example.com/CacheNook-1.2.1.dmg",
   "notes": "Có gì mới"
 }
 ```

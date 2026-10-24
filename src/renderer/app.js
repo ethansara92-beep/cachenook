@@ -2674,8 +2674,8 @@ async function openSettings() {
           )}</button>
         </div>
         <p class="field-hint">${tt(
-          'Manifest: {"version":"1.2.0","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
-          'Manifest: {"version":"1.2.0","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
+          'Manifest: {"version":"1.2.1","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
+          'Manifest: {"version":"1.2.1","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
         )}</p>
       </details>
       <p class="field-hint" style="margin-top:16px">CacheNook ${

@@ -1,7 +1,7 @@
 {
   "name": "cachenook",
   "productName": "CacheNook",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Git-aware cleanup for developer caches on macOS.",
   "main": "src/main/main.js",

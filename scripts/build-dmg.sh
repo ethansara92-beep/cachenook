@@ -16,6 +16,15 @@ if [[ ! -d "$APP" ]]; then
   exit 1
 fi
 
+# electron-packager can leave the bundle linker-signed without sealed
+# resources. macOS then reports the app as damaged. Re-sign the whole bundle
+# (ad-hoc by default, or SIGN_IDENTITY for a local development certificate)
+# and verify the seal before shipping it.
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+echo "Signing with: $SIGN_IDENTITY"
+codesign --force --deep --sign "$SIGN_IDENTITY" --identifier com.cachenook.app "$APP"
+codesign --verify --deep --strict "$APP"
+
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 

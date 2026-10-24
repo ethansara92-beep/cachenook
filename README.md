@@ -111,7 +111,7 @@ CacheNook is deliberately conservative:
 
 Download the DMG from [Releases](https://github.com/ethansara92-beep/cachenook/releases/latest) and drag CacheNook into Applications.
 
-Builds are unsigned unless the release workflow runs with a Developer ID. If Gatekeeper complains, right-click the app and choose **Open** once.
+Builds are ad-hoc signed unless the release workflow runs with a Developer ID. If Gatekeeper complains, right-click the app and choose **Open** once. Release 1.2.1 fixes the invalid ad-hoc bundle signature that made the 1.2.0 DMG show as damaged; use 1.2.1 or later.
 
 ### Build from source
 
@@ -190,8 +190,8 @@ The AI API key is stored separately in an encrypted `ai-key` file. It never appe
 
 ```json
 {
-  "version": "1.2.0",
-  "url": "https://example.com/CacheNook-1.2.0.dmg",
+  "version": "1.2.1",
+  "url": "https://example.com/CacheNook-1.2.1.dmg",
   "notes": "What changed"
 }
 ```

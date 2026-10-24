@@ -44,6 +44,7 @@ const state = {
   configPath: '',
   disk: null,
   fullDiskAccess: false,
+  aiKeyConfigured: false,
   staleJob: null,
   history: [],
   historySummary: null,
@@ -2421,6 +2422,9 @@ async function openSettings() {
     if (info.historySummary) state.historySummary = info.historySummary;
     if (info.deep) state.deep = info.deep;
     if (typeof info.loginItem === 'boolean') state.loginItem = info.loginItem;
+    if (typeof info.aiKeyConfigured === 'boolean') {
+      state.aiKeyConfigured = info.aiKeyConfigured;
+    }
     if (info.disk) state.disk = info.disk;
   } catch {
     // show the last known state
@@ -2610,8 +2614,12 @@ async function openSettings() {
           'Mỗi dòng một tệp hoặc thư mục. Các mục trong Desktop, Downloads và Documents nằm trong đây sẽ bị bỏ qua.',
         )}</p>
       </details>
-      <details class="advanced-block" ${!config.aiEndpoint ? 'open' : ''}>
-        <summary>${tt('AI suggestions', 'Gợi ý AI')}</summary>
+      <details class="advanced-block" ${
+        !config.aiEndpoint || !state.aiKeyConfigured ? 'open' : ''
+      }>
+        <summary>${tt('AI suggestions', 'Gợi ý AI')}${
+          state.aiKeyConfigured ? ` · ${tt('key saved', 'đã lưu key')}` : ''
+        }</summary>
         <div class="field">
           <label class="field-label" for="setting-ai-endpoint">${tt(
             'OpenAI-compatible endpoint',
@@ -2627,9 +2635,31 @@ async function openSettings() {
             config.aiModel || '',
           )}" />
         </div>
+        <div class="field">
+          <label class="field-label" for="setting-ai-key">${tt('API key', 'API key')}</label>
+          <div class="update-row">
+            <input class="search-input" id="setting-ai-key" type="password" spellcheck="false" autocomplete="off" placeholder="${esc(
+              state.aiKeyConfigured
+                ? tt('Saved in macOS Keychain', 'Đã lưu trong Keychain')
+                : tt('Optional for remote endpoints', 'Tuỳ chọn cho endpoint từ xa'),
+            )}" />
+            ${
+              state.aiKeyConfigured
+                ? `<button class="ghost-button" type="button" data-action="clear-ai-key">${tt(
+                    'Clear',
+                    'Xoá',
+                  )}</button>`
+                : ''
+            }
+          </div>
+          <p class="field-hint">${tt(
+            'Encrypted with the macOS Keychain. Leave blank to keep the saved key. Local endpoints do not need one.',
+            'Được mã hoá bằng Keychain macOS. Để trống để giữ key đã lưu. Endpoint cục bộ không cần key.',
+          )}</p>
+        </div>
         <p class="field-hint">${tt(
-          'Smart sort sends only file names, sizes, ages and folder paths to this endpoint. Nothing is sent until you press it. For remote endpoints, set CACHENOOK_AI_API_KEY.',
-          'Sắp xếp bằng AI chỉ gửi tên, dung lượng, tuổi và đường dẫn thư mục tới endpoint này. Không có gì được gửi cho đến khi bạn bấm. Với endpoint từ xa, đặt CACHENOOK_AI_API_KEY.',
+          'Smart sort sends only file names, sizes, ages and folder paths to this endpoint. Nothing is sent until you press it. Add a key above for remote endpoints; CACHENOOK_AI_API_KEY also works for automation.',
+          'Sắp xếp bằng AI chỉ gửi tên, dung lượng, tuổi và đường dẫn thư mục tới endpoint này. Không có gì được gửi cho đến khi bạn bấm. Thêm key ở trên cho endpoint từ xa; CACHENOOK_AI_API_KEY cũng dùng được khi tự động hoá.',
         )}</p>
       </details>
       <details class="advanced-block">
@@ -2644,8 +2674,8 @@ async function openSettings() {
           )}</button>
         </div>
         <p class="field-hint">${tt(
-          'Manifest: {"version":"1.1.0","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
-          'Manifest: {"version":"1.1.0","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
+          'Manifest: {"version":"1.2.0","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
+          'Manifest: {"version":"1.2.0","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
         )}</p>
       </details>
       <p class="field-hint" style="margin-top:16px">CacheNook ${
@@ -2776,6 +2806,11 @@ async function saveSettings() {
     const loginField = document.getElementById('setting-login');
     if (loginField) {
       state.loginItem = await api.setLoginItem(loginField.checked);
+    }
+    const aiKeyField = document.getElementById('setting-ai-key');
+    const newAiKey = aiKeyField?.value.trim();
+    if (newAiKey) {
+      state.aiKeyConfigured = await api.setAiKey(newAiKey);
     }
     const rootsChanged =
       JSON.stringify(previous.projectRoots || []) !== JSON.stringify(config.projectRoots || []);
@@ -3298,6 +3333,25 @@ function onDocumentClick(event) {
       smartSortPersonal();
     } else if (name === 'select-ai-trash') {
       selectAiTrashSuggestions();
+    } else if (name === 'clear-ai-key') {
+      api
+        .clearAiKey()
+        .then(() => {
+          state.aiKeyConfigured = false;
+          const field = document.getElementById('setting-ai-key');
+          if (field) {
+            field.value = '';
+            field.placeholder = tt(
+              'Optional for remote endpoints',
+              'Tuỳ chọn cho endpoint từ xa',
+            );
+          }
+          const summary = action.closest('.advanced-block')?.querySelector('summary');
+          if (summary) summary.textContent = tt('AI suggestions', 'Gợi ý AI');
+          action.remove();
+          toast(tt('API key cleared', 'Đã xoá API key'));
+        })
+        .catch((error) => toast(error.message, 'error'));
     } else if (name === 'trash-personal') {
       openPersonalTrashConfirm();
     } else if (name === 'open-settings') {
@@ -3613,6 +3667,7 @@ async function init() {
     state.configPath = info.configPath || '';
     state.disk = info.disk;
     state.fullDiskAccess = Boolean(info.fullDiskAccess);
+    state.aiKeyConfigured = Boolean(info.aiKeyConfigured);
     state.staleJob = info.staleJob || null;
     state.history = info.history || [];
     state.historySummary = info.historySummary || null;

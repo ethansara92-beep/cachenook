@@ -75,7 +75,7 @@ Smart sort can classify the current list as Keep, Review or Trash using an OpenA
 - Sends file names, extensions, sizes, ages and folder paths. Never file contents.
 - Suggestions are advisory. Use **Select AI trash suggestions** and review before removing anything.
 - Selection is limited to the visible profile and search.
-- Remote endpoints can use `CACHENOOK_AI_API_KEY`.
+- Save an API key in **Settings > AI suggestions**. It is encrypted with the macOS Keychain and never returned to the renderer. `CACHENOOK_AI_API_KEY` also works for automation.
 
 ### Large files, history, deep clean
 
@@ -103,6 +103,7 @@ CacheNook is deliberately conservative:
 - Personal files are never removed automatically; they need selection and confirmation.
 - Protected paths and app bundles are rejected even if a rule is wrong.
 - Smart sort only contacts the endpoint you configure, only when you press it, and sends metadata rather than file contents.
+- The AI API key is stored encrypted with the macOS Keychain. It is not written to config, logs or icons.
 - No telemetry, no analytics, no network access during a scan or an update check other than the URL you ask for.
 - All state stays in `~/Library/Application Support/CacheNook`.
 
@@ -181,14 +182,16 @@ npm run stale:apply
 }
 ```
 
+The AI API key is stored separately in an encrypted `ai-key` file. It never appears in `config.json`.
+
 ## Updates and login
 
 - **Settings > Updates** accepts a JSON manifest URL. The app menu also has **Check for Updates…**.
 
 ```json
 {
-  "version": "1.1.0",
-  "url": "https://example.com/CacheNook-1.1.0.dmg",
+  "version": "1.2.0",
+  "url": "https://example.com/CacheNook-1.2.0.dmg",
   "notes": "What changed"
 }
 ```

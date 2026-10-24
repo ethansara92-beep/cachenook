@@ -72,7 +72,8 @@ Smart sort is optional. Add an OpenAI-compatible endpoint and model in **Setting
 - Only file names, extensions, sizes, ages and folder paths are sent. File contents are never read or uploaded.
 - Suggestions are `Keep`, `Review` or `Trash`. They are advisory; nothing is selected until you click **Select AI trash suggestions**.
 - That selection is limited to the visible search and profile, so hidden files cannot be swept in by accident.
-- The endpoint is off by default. Remote endpoints can use `CACHENOOK_AI_API_KEY`.
+- Add an optional API key in **Settings > AI suggestions**. It is encrypted with the macOS Keychain and never sent to the renderer. `CACHENOOK_AI_API_KEY` also works for automation.
+- The endpoint is off by default.
 
 ## Trash confirmation
 
@@ -89,7 +90,7 @@ The confirmation lists every file and size. Files go to the macOS Trash, so they
 - Project folders and the large file threshold.
 - Automatic cleanup: day, time and inactivity window.
 - Personal file exclusions.
-- Optional AI endpoint and model.
+- Optional AI endpoint, model and API key.
 - Update manifest URL.
 
 ## Exclusions
@@ -127,8 +128,8 @@ Add a JSON manifest URL:
 
 ```json
 {
-  "version": "1.1.0",
-  "url": "https://example.com/CacheNook-1.1.0.dmg",
+  "version": "1.2.0",
+  "url": "https://example.com/CacheNook-1.2.0.dmg",
   "notes": "What changed"
 }
 ```

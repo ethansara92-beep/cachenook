@@ -7,6 +7,7 @@ const { app, ipcMain, shell } = require('electron');
 
 const { createCancellation } = require('./cancel');
 const ai = require('./ai');
+const aiKey = require('./ai-key');
 const { createStore } = require('./config');
 const deep = require('./deep');
 const { cleanTargets } = require('./clean');
@@ -68,6 +69,7 @@ function registerIpc({ getWindow, onLanguageChange }) {
       version: app.getVersion(),
       platform: process.platform,
       fullDiskAccess: await hasFullDiskAccess(),
+      aiKeyConfigured: aiKey.hasKey(),
       staleJob: await scheduler.getStatus(),
       history: historyEntries.slice(-8).reverse(),
       historySummary: history.summarize(historyEntries),
@@ -318,7 +320,19 @@ function registerIpc({ getWindow, onLanguageChange }) {
         Number.isFinite(Number(file.bytes)) &&
         personal.ROOTS.some((root) => isInside(file.path, root)),
     );
-    return ai.classify(safe, store.load());
+    const apiKey = process.env.CACHENOOK_AI_API_KEY || aiKey.getKey();
+    return ai.classify(safe, store.load(), apiKey);
+  });
+
+  ipcMain.handle('ai:set-key', (_event, key) => {
+    if (typeof key !== 'string') throw new Error('Expected an API key');
+    aiKey.setKey(key);
+    return aiKey.hasKey();
+  });
+
+  ipcMain.handle('ai:clear-key', () => {
+    aiKey.clearKey();
+    return false;
   });
 
   ipcMain.handle('projects:clean', async (_event, paths) => {

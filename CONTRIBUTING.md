@@ -31,6 +31,7 @@ Node 20 or newer is required for development. macOS 13 or newer is the supported
 - Personal file profiles are review-first. Do not add a silent delete path.
 - AI suggestions are advisory. Never auto-select or auto-delete from a model response.
 - Smart sort may send file metadata only. Never send file contents or read files for the model.
+- Store an AI API key with Electron `safeStorage`, never in config or renderer state, and never log it.
 - Preview before destructive actions. Do not add a silent delete path.
 
 ## Code style

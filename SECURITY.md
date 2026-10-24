@@ -31,6 +31,7 @@ In scope:
 - LaunchAgent or launcher command injection
 - Renderer code execution
 - Sending file contents or unrelated data to an AI endpoint
+- Exposing the stored AI API key in config, logs or the renderer
 
 Out of scope:
 

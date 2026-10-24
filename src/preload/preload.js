@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('cachenook', {
   cancelPersonal: () => ipcRenderer.invoke('personal:cancel'),
   trashPersonal: (paths) => ipcRenderer.invoke('personal:trash', paths),
   classifyPersonal: (files) => ipcRenderer.invoke('personal:classify', files),
+  setAiKey: (key) => ipcRenderer.invoke('ai:set-key', key),
+  clearAiKey: () => ipcRenderer.invoke('ai:clear-key'),
   cleanProjects: (paths) => ipcRenderer.invoke('projects:clean', paths),
   reveal: (target) => ipcRenderer.invoke('shell:reveal', target),
   getConfig: () => ipcRenderer.invoke('config:get'),

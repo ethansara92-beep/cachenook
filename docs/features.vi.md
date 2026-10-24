@@ -72,7 +72,8 @@ Sắp xếp bằng AI là tuỳ chọn. Thêm endpoint và model tương thích 
 - Chỉ gửi tên, phần mở rộng, dung lượng, tuổi và đường dẫn thư mục. Không đọc hoặc tải nội dung file.
 - Gợi ý là `Giữ`, `Xem lại` hoặc `Xoá`. Chỉ mang tính tham khảo; không mục nào được chọn cho đến khi bấm **Chọn mục AI đề xuất xoá**.
 - Lựa chọn chỉ giới hạn trong bộ lọc và profile đang hiện, nên không thể quét nhầm file bị ẩn.
-- Endpoint mặc định tắt. Endpoint từ xa có thể dùng `CACHENOOK_AI_API_KEY`.
+- Có thể thêm API key trong **Cài đặt > Gợi ý AI**. Key được mã hoá bằng Keychain macOS và không bao giờ gửi lại renderer. `CACHENOOK_AI_API_KEY` cũng dùng được khi tự động hoá.
+- Endpoint mặc định tắt.
 
 ## Xác nhận Thùng rác
 
@@ -89,7 +90,7 @@ Hộp xác nhận liệt kê từng file và dung lượng. File vào Thùng rá
 - Thư mục dự án và ngưỡng file lớn.
 - Tự động dọn: ngày, giờ, số ngày không hoạt động.
 - Loại trừ tệp cá nhân.
-- Endpoint và model AI tuỳ chọn.
+- Endpoint, model và API key AI tuỳ chọn.
 - URL manifest cập nhật.
 
 ## Loại trừ
@@ -127,8 +128,8 @@ Nhập URL manifest JSON:
 
 ```json
 {
-  "version": "1.1.0",
-  "url": "https://example.com/CacheNook-1.1.0.dmg",
+  "version": "1.2.0",
+  "url": "https://example.com/CacheNook-1.2.0.dmg",
   "notes": "Có gì mới"
 }
 ```

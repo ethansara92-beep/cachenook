@@ -66,13 +66,12 @@ function metadataFor(file, id) {
   };
 }
 
-async function classifyBatch(batch, { endpoint, model }) {
+async function classifyBatch(batch, { endpoint, model, apiKey }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 90_000);
 
   try {
     const headers = { 'Content-Type': 'application/json' };
-    const apiKey = process.env.CACHENOOK_AI_API_KEY;
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
     const response = await fetch(endpointUrl(endpoint), {
@@ -112,7 +111,7 @@ async function classifyBatch(batch, { endpoint, model }) {
   }
 }
 
-async function classify(files, config) {
+async function classify(files, config, apiKey = '') {
   const endpoint = typeof config.aiEndpoint === 'string' ? config.aiEndpoint.trim() : '';
   const model = typeof config.aiModel === 'string' ? config.aiModel.trim() : '';
   if (!/^https?:\/\//i.test(endpoint)) {
@@ -126,7 +125,7 @@ async function classify(files, config) {
 
   for (let offset = 0; offset < selected.length; offset += BATCH_SIZE) {
     const batch = selected.slice(offset, offset + BATCH_SIZE);
-    const result = await classifyBatch(batch, { endpoint, model });
+    const result = await classifyBatch(batch, { endpoint, model, apiKey });
     for (const suggestion of result) {
       const file = batch[suggestion.id];
       if (!file) continue;

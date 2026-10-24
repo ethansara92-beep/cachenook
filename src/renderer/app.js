@@ -72,7 +72,95 @@ const state = {
     minMB: 300,
     query: '',
   },
+  personal: {
+    status: 'idle',
+    items: [],
+    counts: {},
+    selected: new Set(),
+    filter: 'all',
+    query: '',
+    ai: new Map(),
+    aiStatus: 'idle',
+    error: null,
+    found: 0,
+    totalBytes: 0,
+  },
 };
+
+const PERSONAL_PROFILES = [
+  {
+    id: 'screenshots',
+    name: 'Screenshots',
+    viName: 'Ảnh chụp',
+    icon: 'photo',
+    risk: 'safe',
+    description: 'Screenshot images older than 30 days.',
+    viDescription: 'Ảnh chụp màn hình cũ hơn 30 ngày.',
+  },
+  {
+    id: 'installers',
+    name: 'Installers',
+    viName: 'Bộ cài',
+    icon: 'package',
+    risk: 'safe',
+    description: 'Installer files over 50 MB, older than 30 days.',
+    viDescription: 'Bộ cài trên 50 MB, cũ hơn 30 ngày.',
+  },
+  {
+    id: 'archives',
+    name: 'Archives',
+    viName: 'Tệp nén',
+    icon: 'archive',
+    risk: 'caution',
+    description: 'ZIP, RAR and 7z archives over 10 MB, older than 90 days.',
+    viDescription: 'Tệp ZIP, RAR, 7z trên 10 MB, cũ hơn 90 ngày.',
+  },
+  {
+    id: 'temp',
+    name: 'Temp files',
+    viName: 'Tệp tạm',
+    icon: 'file',
+    risk: 'safe',
+    description: 'Partial downloads, Office lock files and .DS_Store.',
+    viDescription: 'Tải dở, file khoá Office và .DS_Store.',
+  },
+  {
+    id: 'stale-downloads',
+    name: 'Stale downloads',
+    viName: 'Downloads cũ',
+    icon: 'folder',
+    risk: 'caution',
+    description: 'Files over 10 MB left in Downloads for more than 90 days.',
+    viDescription: 'Tệp trên 10 MB nằm trong Downloads hơn 90 ngày.',
+  },
+  {
+    id: 'large-old',
+    name: 'Large old files',
+    viName: 'File lớn cũ',
+    icon: 'file',
+    risk: 'caution',
+    description: 'Files over 500 MB that have not changed in 180 days.',
+    viDescription: 'File trên 500 MB không thay đổi trong 180 ngày.',
+  },
+];
+
+const PERSONAL_PROFILE_BY_ID = new Map(PERSONAL_PROFILES.map((profile) => [profile.id, profile]));
+
+function personalProfileName(id) {
+  const profile = PERSONAL_PROFILE_BY_ID.get(id);
+  if (!profile) return id;
+  return state.lang === 'vi' ? profile.viName : profile.name;
+}
+
+function personalProfileDescription(id) {
+  const profile = PERSONAL_PROFILE_BY_ID.get(id);
+  if (!profile) return '';
+  return state.lang === 'vi' ? profile.viDescription : profile.description;
+}
+
+function personalFileIsSelected(path) {
+  return state.personal.selected.has(path);
+}
 
 const TARGET_VI = {
   'app-caches': { name: 'Bộ nhớ đệm ứng dụng', desc: 'File tạm ứng dụng tự tạo lại khi cần. An toàn để xoá.' },
@@ -180,6 +268,7 @@ function applyLanguage() {
   const labels = {
     clean: tt('Cleanup', 'Dọn dẹp'),
     projects: tt('Projects', 'Dự án'),
+    personal: tt('Files', 'Tệp'),
     files: tt('Large files', 'File lớn'),
   };
   document.querySelectorAll('.tab[data-view]').forEach((tab) => {
@@ -354,6 +443,8 @@ function render() {
     renderProjects();
   } else if (state.view === 'files') {
     renderFiles();
+  } else if (state.view === 'personal') {
+    renderPersonal();
   } else {
     renderClean();
   }
@@ -386,7 +477,8 @@ function renderChrome() {
   const scanning =
     state.scan.running ||
     state.projects.status === 'scanning' ||
-    state.files.status === 'scanning';
+    state.files.status === 'scanning' ||
+    state.personal.status === 'scanning';
   const cleaning = state.clean.running;
 
   els.rescanButton.disabled = cleaning;
@@ -1109,6 +1201,460 @@ function fileRow(file) {
     </div>`;
 }
 
+/* ---------- personal files ---------- */
+
+function personalSelectedItems() {
+  return state.personal.items.filter((file) => state.personal.selected.has(file.path));
+}
+
+function filteredPersonalItems() {
+  const personal = state.personal;
+  const query = personal.query.trim().toLowerCase();
+  return personal.items.filter((file) => {
+    if (personal.filter !== 'all' && !(file.profiles || []).includes(personal.filter)) {
+      return false;
+    }
+    if (query && !`${file.name} ${file.dir}`.toLowerCase().includes(query)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function personalCountsAdjust(items, sign) {
+  for (const file of items) {
+    state.personal.found = Math.max(0, state.personal.found - sign);
+    state.personal.totalBytes = Math.max(0, state.personal.totalBytes - sign * file.bytes);
+    for (const id of file.profiles || []) {
+      const count = state.personal.counts[id];
+      if (!count) continue;
+      count.count = Math.max(0, count.count - sign);
+      count.bytes = Math.max(0, count.bytes - sign * file.bytes);
+    }
+  }
+}
+
+async function startPersonalScan() {
+  if (state.personal.status === 'scanning') return;
+  state.personal.status = 'scanning';
+  state.personal.error = null;
+  state.personal.selected.clear();
+  state.personal.ai.clear();
+  state.personal.aiStatus = 'idle';
+  render();
+
+  try {
+    const result = await api.scanPersonal();
+    if (result && result.available === false) {
+      state.personal.status = 'blocked';
+      state.personal.items = [];
+      state.personal.counts = {};
+      state.personal.found = 0;
+      state.personal.totalBytes = 0;
+    } else {
+      state.personal.status = 'ready';
+      state.personal.items = result.items || [];
+      state.personal.counts = result.counts || {};
+      state.personal.found = result.found || 0;
+      state.personal.totalBytes = result.totalBytes || 0;
+    }
+  } catch (error) {
+    state.personal.status = 'error';
+    state.personal.error = error.message;
+  } finally {
+    render();
+  }
+}
+
+function renderPersonal() {
+  const personal = state.personal;
+  const scanning = personal.status === 'scanning';
+  const blocked = personal.status === 'blocked';
+  const items = personal.items;
+  const total = personal.totalBytes || 0;
+
+  const line = scanning
+    ? tt('Scanning Desktop, Downloads and Documents…', 'Đang quét Desktop, Downloads và Documents…')
+    : blocked
+      ? tt('Desktop, Downloads and Documents are protected.', 'Desktop, Downloads và Documents đang được bảo vệ.')
+      : personal.found > 0
+        ? tt(
+            '{n} files in Desktop, Downloads and Documents.',
+            '{n} tệp trong Desktop, Downloads và Documents.',
+            { n: personal.found },
+          )
+        : tt(
+            'No old screenshots, installers or stale files found.',
+            'Không tìm thấy ảnh chụp, bộ cài hay tệp cũ nào.',
+          );
+
+  const actions = scanning
+    ? `<button class="text-button" type="button" data-action="cancel-personal">${tt(
+        'Cancel',
+        'Huỷ',
+      )}</button>`
+    : `<button class="text-button" type="button" data-action="scan-personal">${tt(
+        'Scan again',
+        'Quét lại',
+      )}</button><button class="text-button is-muted" type="button" data-action="open-settings">${tt(
+        'Settings',
+        'Cài đặt',
+      )}</button>`;
+
+  let content = '';
+
+  if (blocked) {
+    content += sheetNote(
+      tt(
+        '<strong>Desktop, Downloads and Documents are protected.</strong> macOS keeps these folders behind Full Disk Access. Grant it, then check again.',
+        '<strong>Desktop, Downloads và Documents đang được bảo vệ.</strong> macOS giữ các thư mục này sau Full Disk Access. Cấp quyền rồi kiểm tra lại.',
+      ),
+      `<button class="text-button is-muted" type="button" data-action="recheck-fda">${tt(
+        'Check again',
+        'Kiểm tra lại',
+      )}</button><button class="text-button" type="button" data-action="open-fda">${tt(
+        'Open settings',
+        'Mở cài đặt',
+      )}</button>`,
+    );
+  } else if (scanning) {
+    content += progressCard({
+      text: tt(
+        'Scanning Desktop, Downloads and Documents…',
+        'Đang quét Desktop, Downloads và Documents…',
+      ),
+    });
+  } else if (personal.status === 'error') {
+    content += emptyState(
+      tt('File scan failed', 'Quét tệp thất bại'),
+      personal.error || tt('Unknown error', 'Lỗi không rõ'),
+      `<button class="ghost-button" type="button" data-action="scan-personal">${tt(
+        'Try again',
+        'Thử lại',
+      )}</button>`,
+    );
+  } else if (personal.status === 'idle') {
+    content += emptyState(
+      tt('Scan personal files', 'Quét tệp cá nhân'),
+      tt(
+        'Find old screenshots, installers and stale files in Desktop, Downloads and Documents.',
+        'Tìm ảnh chụp, bộ cài và tệp cũ trong Desktop, Downloads và Documents.',
+      ),
+      `<button class="primary-button" type="button" data-action="scan-personal">${tt(
+        'Scan files',
+        'Quét tệp',
+      )}</button>`,
+    );
+  } else if (items.length === 0) {
+    content += emptyState(
+      tt('Nothing to clean', 'Không có gì để dọn'),
+      tt(
+        'No old screenshots, installers or stale files match the profiles.',
+        'Không có ảnh chụp, bộ cài hay tệp cũ nào khớp profile.',
+      ),
+      `<button class="ghost-button" type="button" data-action="scan-personal">${tt(
+        'Scan again',
+        'Quét lại',
+      )}</button>`,
+    );
+  } else {
+    const chips = [
+      `<button class="chip${personal.filter === 'all' ? ' is-active' : ''}" type="button" data-profile="all">${tt(
+        'All',
+        'Tất cả',
+      )}<span class="chip-count">${formatCount(personal.found)}</span></button>`,
+      ...PERSONAL_PROFILES.map((profile) => {
+        const count = personal.counts[profile.id]?.count || 0;
+        return `<button class="chip${
+          personal.filter === profile.id ? ' is-active' : ''
+        }" type="button" data-profile="${profile.id}" title="${esc(
+          personalProfileDescription(profile.id),
+        )}">${icon(profile.icon)}${esc(personalProfileName(profile.id))}<span class="chip-count">${formatCount(
+          count,
+        )}</span></button>`;
+      }),
+    ].join('');
+
+    const filtered = filteredPersonalItems();
+    const trashSuggestions = filtered.filter(
+      (file) => personal.ai.get(file.path)?.action === 'trash',
+    ).length;
+
+    content += `<div class="profile-chips">${chips}</div>
+      <div class="toolbar">
+        <div class="search-field">
+          ${icon('search')}
+          <input class="search-input" id="personal-search" type="text" placeholder="${esc(
+            tt('Filter by name or folder', 'Lọc theo tên hoặc thư mục'),
+          )}" value="${esc(personal.query)}" autocomplete="off" spellcheck="false" />
+        </div>
+        <button class="text-button" type="button" data-action="smart-sort" ${
+          personal.aiStatus === 'running' ? 'disabled' : ''
+        }>${
+          personal.aiStatus === 'running'
+            ? `<span class="spinner"></span>${tt('Sorting…', 'Đang phân loại…')}`
+            : tt('Smart sort', 'Sắp xếp bằng AI')
+        }</button>
+        ${
+          trashSuggestions > 0
+            ? `<button class="text-button is-muted" type="button" data-action="select-ai-trash">${tt(
+                'Select {n} AI trash suggestions',
+                'Chọn {n} mục AI đề xuất xoá',
+                { n: trashSuggestions },
+              )}</button>`
+            : ''
+        }
+        <span class="group-meta">${formatCount(filtered.length)} / ${formatCount(
+          items.length,
+        )}</span>
+      </div>`;
+
+    content +=
+      filtered.length === 0
+        ? emptyState(
+            tt('No matches', 'Không có kết quả'),
+            tt('Try a different search or profile.', 'Thử từ khoá hoặc profile khác.'),
+          )
+        : `<div class="sheet" id="personal-rows">${filtered.map(personalRow).join('')}</div>
+           <p class="footnote">${tt(
+             'Moved files go to the Trash and stay recoverable until you empty it.',
+             'Tệp bị xoá sẽ vào Thùng rác và có thể khôi phục cho đến khi bạn dọn Thùng rác.',
+           )}</p>`;
+  }
+
+  els.view.innerHTML =
+    hero({
+      amount: formatBytes(total),
+      line,
+      actions,
+      loading: scanning && total === 0,
+    }) + content;
+}
+
+function personalRow(file) {
+  const selected = personalFileIsSelected(file.path);
+  const suggestion = state.personal.ai.get(file.path);
+  const profile = PERSONAL_PROFILE_BY_ID.get((file.profiles || [])[0]);
+  const iconName = profile?.icon || 'file';
+  const tags = (file.profiles || [])
+    .map((id) => `<span class="tag">${esc(personalProfileName(id))}</span>`)
+    .join('');
+  const suggestionLabel = suggestion
+    ? tt(
+        suggestion.action === 'trash' ? 'AI: Trash' : suggestion.action === 'review' ? 'AI: Review' : 'AI: Keep',
+        suggestion.action === 'trash' ? 'AI: Xoá' : suggestion.action === 'review' ? 'AI: Xem lại' : 'AI: Giữ',
+      )
+    : '';
+
+  return `<div class="personal-row${selected ? ' is-selected' : ''}" data-row="personal" data-path="${esc(
+    file.path,
+  )}">
+      <input class="row-check" type="checkbox" data-select="personal" data-path="${esc(
+        file.path,
+      )}" aria-label="${esc(tt('Select {name}', 'Chọn {name}', { name: file.name }))}" ${
+        selected ? 'checked' : ''
+      } />
+      <span class="file-icon">${icon(iconName)}</span>
+      <div class="file-body">
+        <div class="file-name">${esc(file.name)}</div>
+        <div class="file-dir" title="${esc(file.path)}">${esc(tilde(file.dir))}</div>
+        <div class="personal-tags">${tags}${
+          suggestion
+            ? `<span class="ai-badge is-${suggestion.action}" title="${esc(
+                suggestion.reason,
+              )}">${esc(suggestionLabel)}</span>`
+            : ''
+        }</div>
+      </div>
+      <div class="file-size">${esc(formatBytes(file.bytes))}</div>
+      <div class="file-age">${esc(formatAge(file.mtime))}</div>
+      <div class="personal-actions">
+        <button class="icon-button" type="button" data-keep="${esc(
+          file.path,
+        )}" aria-label="${esc(tt('Keep and exclude', 'Giữ và loại trừ'))}" title="${esc(
+          tt('Keep and exclude', 'Giữ và loại trừ'),
+        )}">${icon('lock')}</button>
+        <button class="icon-button" type="button" data-reveal="${esc(
+          file.path,
+        )}" aria-label="${esc(tt('Reveal in Finder', 'Mở trong Finder'))}">${icon(
+          'arrow-up-right',
+        )}</button>
+      </div>
+    </div>`;
+}
+
+function openPersonalTrashConfirm() {
+  const files = personalSelectedItems();
+  if (files.length === 0) return;
+  const bytes = files.reduce((sum, file) => sum + file.bytes, 0);
+  const shown = files.slice(0, 12);
+  const more = files.length - shown.length;
+
+  showDialog({
+    kind: 'personal-trash',
+    paths: files.map((file) => file.path),
+    wide: true,
+    title: tt('Move {n} files to the Trash?', 'Chuyển {n} tệp vào Thùng rác?', {
+      n: files.length,
+    }),
+    sub: tt(
+      '{size} stays on disk until you empty the Trash.',
+      '{size} vẫn chiếm ổ cho đến khi bạn dọn Thùng rác.',
+      { size: formatBytes(bytes) },
+    ),
+    body: `<div class="dialog-list">
+        ${shown
+          .map(
+            (file) => `<div class="dialog-item">
+              <span class="dialog-item-name" title="${esc(file.path)}">${esc(file.name)}</span>
+              <span class="dialog-item-size">${esc(formatBytes(file.bytes))}</span>
+            </div>`,
+          )
+          .join('')}
+        ${more > 0 ? `<div class="dialog-item"><span class="dialog-item-name" style="color:var(--text-3)">${tt('and {n} more', 'và {n} tệp nữa', { n: more })}</span></div>` : ''}
+      </div>
+      <div class="dialog-warning" style="border-color:var(--border);background:var(--surface-2)">${icon(
+        'check',
+      )}<span>${tt(
+        'Files go to the Trash and can be recovered until you empty it.',
+        'Tệp sẽ vào Thùng rác và có thể khôi phục cho đến khi bạn dọn nó.',
+      )}</span></div>`,
+    confirmLabel: tt('Move to Trash', 'Chuyển vào Thùng rác'),
+    danger: false,
+  });
+}
+
+async function trashSelectedPersonal() {
+  const files = personalSelectedItems();
+  if (files.length === 0) return;
+
+  try {
+    const result = await api.trashPersonal(files.map((file) => file.path));
+    const okPaths = new Set(
+      (result.results || []).filter((entry) => entry.ok).map((entry) => entry.path),
+    );
+    const removed = files.filter((file) => okPaths.has(file.path));
+
+    state.personal.items = state.personal.items.filter(
+      (file) => !okPaths.has(file.path),
+    );
+    personalCountsAdjust(removed, 1);
+    state.personal.selected.clear();
+    state.personal.ai.clear();
+
+    if (removed.length > 0) {
+      state.banner = {
+        kind: 'success',
+        title: tt('Moved {n} files to the Trash', 'Đã chuyển {n} tệp vào Thùng rác', {
+          n: removed.length,
+        }),
+        sub: tt(
+          '{size} will be reclaimed when you empty the Trash.',
+          '{size} sẽ được giải phóng khi bạn dọn Thùng rác.',
+          { size: formatBytes(result.freed || 0) },
+        ),
+      };
+    }
+
+    const failed = (result.results || []).filter((entry) => !entry.ok);
+    if (failed.length > 0) {
+      toast(
+        tt('{n} files could not be moved', '{n} tệp không chuyển được', {
+          n: failed.length,
+        }),
+        'error',
+      );
+    }
+
+    await refreshDisk();
+    render();
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+}
+
+async function keepPersonalFile(filePath) {
+  if (state.config?.personalExclude?.includes(filePath)) return;
+  const list = [...(state.config?.personalExclude || []), filePath];
+  try {
+    const config = await api.setConfig({ ...state.config, personalExclude: list });
+    state.config = config;
+    const file = state.personal.items.find((item) => item.path === filePath);
+    state.personal.items = state.personal.items.filter((item) => item.path !== filePath);
+    if (file) personalCountsAdjust([file], 1);
+    state.personal.selected.delete(filePath);
+    state.personal.ai.delete(filePath);
+    toast(tt('Kept and excluded from future scans', 'Đã giữ và loại trừ khỏi lần quét sau'));
+    render();
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+}
+
+async function smartSortPersonal() {
+  if (state.personal.aiStatus === 'running') return;
+  const config = state.config || {};
+  if (!config.aiEndpoint || !config.aiModel) {
+    showDialog({
+      kind: 'ai-config',
+      title: tt('AI suggestions are not configured', 'Chưa cấu hình gợi ý AI'),
+      sub: tt(
+        'Add an OpenAI-compatible endpoint and model in Settings > AI suggestions. Only file names, sizes, ages and folder paths are sent.',
+        'Thêm endpoint và model tương thích OpenAI trong Cài đặt > Gợi ý AI. Chỉ tên, dung lượng, tuổi và thư mục được gửi đi.',
+      ),
+      confirmLabel: tt('Open Settings', 'Mở cài đặt'),
+      danger: false,
+    });
+    return;
+  }
+
+  const files = filteredPersonalItems().slice(0, 200).map((file) => ({
+    path: file.path,
+    name: file.name,
+    dir: file.dir,
+    bytes: file.bytes,
+    ageDays: file.ageDays,
+    profiles: file.profiles,
+  }));
+
+  state.personal.aiStatus = 'running';
+  render();
+
+  try {
+    const suggestions = await api.classifyPersonal(files);
+    state.personal.ai = new Map(suggestions.map((entry) => [entry.path, entry]));
+    state.personal.aiStatus = 'idle';
+    toast(
+      suggestions.length > 0
+        ? tt('AI suggested {n} actions', 'AI đã đề xuất {n} hành động', {
+            n: suggestions.length,
+          })
+        : tt('AI returned no suggestions', 'AI không trả về gợi ý nào'),
+    );
+    render();
+  } catch (error) {
+    state.personal.aiStatus = 'idle';
+    toast(error.message, 'error');
+    render();
+  }
+}
+
+function selectAiTrashSuggestions() {
+  let count = 0;
+  for (const file of filteredPersonalItems()) {
+    if (state.personal.ai.get(file.path)?.action === 'trash') {
+      state.personal.selected.add(file.path);
+      count += 1;
+    }
+  }
+  refreshSelectionUI();
+  if (count > 0) {
+    toast(
+      tt('Selected {n} AI suggestions', 'Đã chọn {n} gợi ý từ AI', { n: count }),
+    );
+  }
+}
+
 /* ---------- action bar ---------- */
 
 function renderActionbar() {
@@ -1121,7 +1667,30 @@ function renderActionbar() {
   let html = '';
   let show = false;
 
-  if (state.view === 'projects') {
+  if (state.view === 'personal') {
+    const files = state.personal.items.filter((file) =>
+      state.personal.selected.has(file.path),
+    );
+    const bytes = files.reduce((sum, file) => sum + file.bytes, 0);
+    show = files.length > 0;
+
+    if (show) {
+      html = `<div class="actionbar-summary">
+          <div class="actionbar-size">${esc(formatBytes(bytes))}</div>
+          <div class="actionbar-sub">${tt(
+            '{n} selected · Recoverable from the Trash',
+            '{n} đã chọn · Có thể khôi phục',
+            { n: files.length },
+          )}</div>
+        </div>
+        <div class="actionbar-actions">
+          <button class="primary-button" type="button" data-action="trash-personal">${tt(
+            'Move to Trash',
+            'Chuyển vào Thùng rác',
+          )}</button>
+        </div>`;
+    }
+  } else if (state.view === 'projects') {
     const selected = [...state.projects.selected];
     const items = state.projects.items.filter((item) =>
       state.projects.selected.has(item.path),
@@ -1154,8 +1723,8 @@ function renderActionbar() {
       html = `<div class="actionbar-summary">
           <div class="actionbar-size">${esc(formatBytes(bytes))}</div>
           <div class="actionbar-sub">${tt(
-            '{n} selected · Moved to the Trash',
-            '{n} đã chọn · Chuyển vào Thùng rác',
+            '{n} selected · Recoverable from the Trash',
+            '{n} đã chọn · Có thể khôi phục',
             { n: files.length },
           )}</div>
         </div>
@@ -1255,6 +1824,13 @@ function refreshSelectionUI() {
   document.querySelectorAll('.file-row').forEach((row) => {
     const key = row.dataset.row === 'project' ? state.projects.selected : state.files.selected;
     const selected = key.has(row.dataset.path);
+    row.classList.toggle('is-selected', selected);
+    const box = row.querySelector('input[data-select]');
+    if (box) box.checked = selected;
+  });
+
+  document.querySelectorAll('.personal-row').forEach((row) => {
+    const selected = state.personal.selected.has(row.dataset.path);
     row.classList.toggle('is-selected', selected);
     const box = row.querySelector('input[data-select]');
     if (box) box.checked = selected;
@@ -1377,6 +1953,7 @@ function handleRescan() {
   if (!state.loaded || isBusy()) return;
   if (state.view === 'projects') startProjectScan();
   else if (state.view === 'files') startFileScan();
+  else if (state.view === 'personal') startPersonalScan();
   else startScan();
 }
 
@@ -1648,6 +2225,7 @@ async function recheckFullDiskAccess() {
       render();
       if (state.view === 'files') startFileScan();
       else if (state.view === 'projects') startProjectScan();
+      else if (state.view === 'personal') startPersonalScan();
       else startScan();
       return;
     }
@@ -2019,6 +2597,42 @@ async function openSettings() {
         )}</p>
       </details>
       <details class="advanced-block">
+        <summary>${tt('Personal file exclusions', 'Loại trừ tệp cá nhân')}${
+          (config.personalExclude || []).length
+            ? ` (${config.personalExclude.length})`
+            : ''
+        }</summary>
+        <textarea class="textarea compact" id="setting-personal-exclude" spellcheck="false" placeholder="/Users/you/Desktop/keep-this.png">${esc(
+          (config.personalExclude || []).join('\n'),
+        )}</textarea>
+        <p class="field-hint">${tt(
+          'One file or folder per line. Desktop, Downloads and Documents matches inside these paths are skipped.',
+          'Mỗi dòng một tệp hoặc thư mục. Các mục trong Desktop, Downloads và Documents nằm trong đây sẽ bị bỏ qua.',
+        )}</p>
+      </details>
+      <details class="advanced-block" ${!config.aiEndpoint ? 'open' : ''}>
+        <summary>${tt('AI suggestions', 'Gợi ý AI')}</summary>
+        <div class="field">
+          <label class="field-label" for="setting-ai-endpoint">${tt(
+            'OpenAI-compatible endpoint',
+            'Endpoint tương thích OpenAI',
+          )}</label>
+          <input class="search-input" id="setting-ai-endpoint" type="url" placeholder="http://127.0.0.1:11434/v1" value="${esc(
+            config.aiEndpoint || '',
+          )}" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="setting-ai-model">${tt('Model', 'Model')}</label>
+          <input class="search-input" id="setting-ai-model" type="text" placeholder="llama3.2" value="${esc(
+            config.aiModel || '',
+          )}" />
+        </div>
+        <p class="field-hint">${tt(
+          'Smart sort sends only file names, sizes, ages and folder paths to this endpoint. Nothing is sent until you press it. For remote endpoints, set CACHENOOK_AI_API_KEY.',
+          'Sắp xếp bằng AI chỉ gửi tên, dung lượng, tuổi và đường dẫn thư mục tới endpoint này. Không có gì được gửi cho đến khi bạn bấm. Với endpoint từ xa, đặt CACHENOOK_AI_API_KEY.',
+        )}</p>
+      </details>
+      <details class="advanced-block">
         <summary>${tt('Updates', 'Cập nhật')}</summary>
         <div class="update-row">
           <input class="search-input" id="setting-update-url" type="url" placeholder="https://example.com/cachenook.json" value="${esc(
@@ -2030,8 +2644,8 @@ async function openSettings() {
           )}</button>
         </div>
         <p class="field-hint">${tt(
-          'Manifest: {"version":"1.0.1","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
-          'Manifest: {"version":"1.0.1","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
+          'Manifest: {"version":"1.1.0","url":"https://.../CacheNook.dmg","notes":"..."}. Silent install needs a signed build and feed.',
+          'Manifest: {"version":"1.1.0","url":"https://.../CacheNook.dmg","notes":"..."}. Cài tự động cần app được ký và feed ký.',
         )}</p>
       </details>
       <p class="field-hint" style="margin-top:16px">CacheNook ${
@@ -2042,8 +2656,10 @@ async function openSettings() {
   });
 
   requestAnimationFrame(() => {
-    const roots = document.getElementById('setting-roots');
-    if (roots) roots.focus();
+    const languageField = document.getElementById('setting-language');
+    if (languageField) languageField.focus({ preventScroll: true });
+    const dialogEl = document.querySelector('.dialog');
+    if (dialogEl) dialogEl.scrollTop = 0;
   });
 }
 
@@ -2057,9 +2673,16 @@ function historyBlock() {
     .slice(0, 4)
     .map((entry) => {
       const date = formatShortDate(new Date(entry.at));
-      const source = entry.source === 'scheduled' ? tt('Auto', 'Tự động') : tt('Manual', 'Thủ công');
+      const source =
+        entry.source === 'scheduled'
+          ? tt('Auto', 'Tự động')
+          : entry.source === 'personal'
+            ? tt('Files', 'Tệp')
+            : tt('Manual', 'Thủ công');
       const items = entry.items
-        ? tt(' · {n} folders', ' · {n} thư mục', { n: entry.items })
+        ? entry.source === 'personal'
+          ? tt(' · {n} files', ' · {n} tệp', { n: entry.items })
+          : tt(' · {n} folders', ' · {n} thư mục', { n: entry.items })
         : '';
       return `<div class="history-row"><span>${esc(date)}</span><span>${esc(
         source,
@@ -2087,6 +2710,9 @@ function readSettingsForm() {
   const staleField = document.getElementById('setting-stale');
   const ignoreField = document.getElementById('setting-ignore');
   const autoField = document.getElementById('setting-auto');
+  const personalExcludeField = document.getElementById('setting-personal-exclude');
+  const aiEndpointField = document.getElementById('setting-ai-endpoint');
+  const aiModelField = document.getElementById('setting-ai-model');
   const weekdayField = document.getElementById('setting-weekday');
   const timeField = document.getElementById('setting-time');
   if (!rootsField || !minField) return null;
@@ -2110,6 +2736,12 @@ function readSettingsForm() {
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean),
+    personalExclude: (personalExcludeField?.value || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean),
+    aiEndpoint: aiEndpointField?.value.trim() || '',
+    aiModel: aiModelField?.value.trim() || '',
     enabled: Boolean(autoField?.checked),
   };
 }
@@ -2158,7 +2790,14 @@ async function saveSettings() {
       state.files.items = [];
       state.files.selected.clear();
     }
+    if (state.view === 'personal') {
+      state.personal.status = 'idle';
+      state.personal.items = [];
+      state.personal.selected.clear();
+      state.personal.ai.clear();
+    }
     closeDialog();
+    if (state.view === 'personal') startPersonalScan();
     toast(
     enabled
       ? tt('Settings saved · automatic cleanup on', 'Đã lưu · tự động dọn đang bật')
@@ -2526,6 +3165,9 @@ function setView(view) {
   if (view === 'files' && state.files.status === 'idle' && state.files.items.length === 0) {
     startFileScan();
   }
+  if (view === 'personal' && state.personal.status === 'idle') {
+    startPersonalScan();
+  }
 }
 
 function onDocumentClick(event) {
@@ -2553,6 +3195,10 @@ function onDocumentClick(event) {
       api.cancelFiles().catch((error) => toast(error.message, 'error'));
       return;
     }
+    if (state.personal.status === 'scanning') {
+      api.cancelPersonal().catch((error) => toast(error.message, 'error'));
+      return;
+    }
     handleRescan();
     return;
   }
@@ -2578,6 +3224,8 @@ function onDocumentClick(event) {
       closeDialog();
       if (current.kind === 'clean') runClean(current.ids);
       else if (current.kind === 'trash') trashSelectedFiles();
+      else if (current.kind === 'personal-trash') trashSelectedPersonal();
+      else if (current.kind === 'ai-config') openSettings();
       else if (current.kind === 'projects') deleteSelectedProjects();
       else if (current.kind === 'stale-preview' && current.summary.removed?.length) {
         applyStaleCleanup();
@@ -2590,6 +3238,19 @@ function onDocumentClick(event) {
       }
       return;
     }
+  }
+
+  const profileChip = event.target.closest('[data-profile]');
+  if (profileChip) {
+    state.personal.filter = profileChip.dataset.profile;
+    render();
+    return;
+  }
+
+  const keep = event.target.closest('[data-keep]');
+  if (keep) {
+    keepPersonalFile(keep.dataset.keep);
+    return;
   }
 
   const reveal = event.target.closest('[data-reveal]');
@@ -2629,6 +3290,16 @@ function onDocumentClick(event) {
       startFileScan();
     } else if (name === 'cancel-files') {
       api.cancelFiles().catch(() => {});
+    } else if (name === 'scan-personal') {
+      startPersonalScan();
+    } else if (name === 'cancel-personal') {
+      api.cancelPersonal().catch(() => {});
+    } else if (name === 'smart-sort') {
+      smartSortPersonal();
+    } else if (name === 'select-ai-trash') {
+      selectAiTrashSuggestions();
+    } else if (name === 'trash-personal') {
+      openPersonalTrashConfirm();
     } else if (name === 'open-settings') {
       openSettings();
     } else if (name === 'select-safe') {
@@ -2687,6 +3358,11 @@ function onDocumentClick(event) {
       if (state.projects.selected.has(path)) state.projects.selected.delete(path);
       else state.projects.selected.add(path);
       refreshSelectionUI();
+    } else if (kind === 'personal') {
+      const path = row.dataset.path;
+      if (state.personal.selected.has(path)) state.personal.selected.delete(path);
+      else state.personal.selected.add(path);
+      refreshSelectionUI();
     }
   }
 }
@@ -2736,6 +3412,14 @@ function onDocumentChange(event) {
     if (box.checked) state.projects.selected.add(path);
     else state.projects.selected.delete(path);
     refreshSelectionUI();
+    return;
+  }
+
+  if (kind === 'personal') {
+    const path = box.dataset.path;
+    if (box.checked) state.personal.selected.add(path);
+    else state.personal.selected.delete(path);
+    refreshSelectionUI();
   }
 }
 
@@ -2743,6 +3427,18 @@ function onDocumentInput(event) {
   if (event.target.id === 'project-search') {
     state.projects.query = event.target.value;
     render();
+    return;
+  }
+
+  if (event.target.id === 'personal-search') {
+    state.personal.query = event.target.value;
+    const cursor = event.target.selectionStart;
+    render();
+    const field = document.getElementById('personal-search');
+    if (field) {
+      field.focus();
+      field.setSelectionRange(cursor, cursor);
+    }
     return;
   }
 

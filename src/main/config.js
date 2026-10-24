@@ -4,9 +4,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { isSafeProjectRoot } = require('./safety');
+const { isInside, isProtected, isSafeProjectRoot } = require('./safety');
 
 const HOME = os.homedir();
+const PERSONAL_EXCLUDE_ROOTS = ['Desktop', 'Downloads', 'Documents'].map((name) =>
+  path.join(HOME, name),
+);
 const MIN_LARGE_FILE_MB = 50;
 const MAX_LARGE_FILE_MB = 100_000;
 const MIN_STALE_DAYS = 7;
@@ -25,6 +28,9 @@ function defaultConfig() {
     autoCleanIgnore: [],
     language: 'en',
     updateUrl: '',
+    personalExclude: [],
+    aiEndpoint: '',
+    aiModel: '',
   };
 }
 
@@ -77,6 +83,27 @@ function normalizeConfig(input) {
   if (typeof input.updateUrl === 'string') {
     const url = input.updateUrl.trim();
     config.updateUrl = /^https?:\/\//i.test(url) ? url.slice(0, 500) : '';
+  }
+
+  if (Array.isArray(input.personalExclude)) {
+    config.personalExclude = input.personalExclude
+      .filter((item) => typeof item === 'string' && path.isAbsolute(item))
+      .map((item) => path.normalize(item))
+      .filter(
+        (item) =>
+          PERSONAL_EXCLUDE_ROOTS.some((root) => isInside(item, root)) && !isProtected(item),
+      )
+      .filter((item, index, list) => list.indexOf(item) === index)
+      .slice(0, 200);
+  }
+
+  if (typeof input.aiEndpoint === 'string') {
+    const endpoint = input.aiEndpoint.trim();
+    config.aiEndpoint = /^https?:\/\//i.test(endpoint) ? endpoint.slice(0, 500) : '';
+  }
+
+  if (typeof input.aiModel === 'string') {
+    config.aiModel = input.aiModel.trim().slice(0, 100);
   }
 
   if (Array.isArray(input.autoCleanIgnore)) {

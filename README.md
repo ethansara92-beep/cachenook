@@ -2,7 +2,7 @@
 
 Git-aware cleanup for developer caches on macOS.
 
-CacheNook finds the build junk that accumulates inside real projects, shows exactly what it will remove, and runs a weekly sweep that refuses to touch repos you are still working on.
+CacheNook finds the build junk that accumulates inside real projects, shows exactly what it will remove, and runs a weekly sweep that refuses to touch repos you are still working on. It also has review-first profiles for Desktop, Downloads and Documents, with optional local AI suggestions.
 
 ![CacheNook](assets/app.png)
 
@@ -54,6 +54,29 @@ The weekly job removes only caches from projects with no recent file changes. It
 
 Preview first. The job records every run and posts a macOS notification when it frees space.
 
+### Personal file profiles
+
+The **Files** tab scans Desktop, Downloads and Documents with conservative profiles:
+
+- **Screenshots** older than 30 days
+- **Installers** over 50 MB, older than 30 days
+- **Archives** over 10 MB, older than 90 days
+- **Temp files**: partial downloads, Office locks and `.DS_Store`
+- **Stale downloads** over 10 MB, older than 90 days
+- **Large old files** over 500 MB, unchanged for 180 days
+
+Nothing is selected by default. Search and profile chips narrow the list. Keep a file to add it to **Personal file exclusions**. Removal always uses the macOS Trash.
+
+### Optional AI suggestions
+
+Smart sort can classify the current list as Keep, Review or Trash using an OpenAI-compatible endpoint, such as a local Ollama or LM Studio server.
+
+- Off by default and only runs when you press it.
+- Sends file names, extensions, sizes, ages and folder paths. Never file contents.
+- Suggestions are advisory. Use **Select AI trash suggestions** and review before removing anything.
+- Selection is limited to the visible profile and search.
+- Remote endpoints can use `CACHENOOK_AI_API_KEY`.
+
 ### Large files, history, deep clean
 
 - **Large files**: files over a configurable threshold, with search and move-to-Trash.
@@ -76,9 +99,11 @@ CacheNook is deliberately conservative:
 - Project roots must resolve inside your home folder. `/`, `/System`, `~/Library` and symlinked roots are rejected.
 - Symlinks are never followed. Paths are resolved before deletion and must stay inside the approved root.
 - Only the contents of a cache folder are removed. The folder itself survives.
-- Project deletes are hard deletes. Large files, installers and Trash review use the macOS Trash.
+- Project deletes are hard deletes. Large files, personal files, installers and Trash review use the macOS Trash.
+- Personal files are never removed automatically; they need selection and confirmation.
 - Protected paths and app bundles are rejected even if a rule is wrong.
-- No telemetry, no analytics, no network access unless you run an update check.
+- Smart sort only contacts the endpoint you configure, only when you press it, and sends metadata rather than file contents.
+- No telemetry, no analytics, no network access during a scan or an update check other than the URL you ask for.
 - All state stays in `~/Library/Application Support/CacheNook`.
 
 ## Install
@@ -112,7 +137,9 @@ macOS protects most of `~/Library`. Without Full Disk Access, CacheNook skips ev
 2. Add CacheNook, or the terminal you use to run `npm start`.
 3. Return to the app and click **Check again**.
 
-The detection probe reads the TCC database read-only and does not trigger a prompt.
+The detection probe reads the TCC database read-only and does not trigger a prompt. The **Files** tab also needs Full Disk Access because macOS protects Desktop, Downloads and Documents.
+
+Replacing an unsigned or ad-hoc build can make macOS forget the grant. Add the new CacheNook build again after an update, then press **Check again**.
 
 ## Scheduled cleanup
 
@@ -146,6 +173,9 @@ npm run stale:apply
   "staleHour": 11,
   "staleMinute": 0,
   "autoCleanIgnore": ["/Users/you/Repositories/keep-me"],
+  "personalExclude": ["/Users/you/Desktop/keep-this.png"],
+  "aiEndpoint": "",
+  "aiModel": "",
   "language": "en",
   "updateUrl": ""
 }
@@ -157,8 +187,8 @@ npm run stale:apply
 
 ```json
 {
-  "version": "1.0.1",
-  "url": "https://example.com/CacheNook-1.0.1.dmg",
+  "version": "1.1.0",
+  "url": "https://example.com/CacheNook-1.1.0.dmg",
   "notes": "What changed"
 }
 ```
@@ -173,6 +203,7 @@ The check only compares versions and opens the download link. Silent install nee
 - **npkill** is a great one-off `node_modules` CLI. CacheNook adds scheduling, review, exclusions, history and a UI.
 - **CleanMyMac**, **Sensei** and **DaisyDisk** are broader paid tools. CacheNook is open source and developer-focused.
 - **AI model caches**: most cleaners clear AI app logs. CacheNook can clear Hugging Face, Torch, Whisper, Ollama and LM Studio model caches when you explicitly choose them.
+- **Personal files**: review-first profiles for Desktop, Downloads and Documents, with optional local AI suggestions and Trash recovery.
 - **Vietnamese**: most competitors are English only.
 
 ## Architecture

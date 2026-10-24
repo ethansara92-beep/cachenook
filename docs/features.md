@@ -2,7 +2,7 @@
 
 CacheNook is built around one idea: a cleanup tool should understand the projects on your disk, not just the system caches Apple already knows about.
 
-Screenshots come from the same build in different permission states. Cleanup shows the full System group with Full Disk Access. The large-file view is shown without access to Desktop, Documents and Downloads so personal files stay out of the docs. Grant access to include them.
+Screenshots come from the same build in different permission states. Cleanup shows the full System group with Full Disk Access. The large-file view is shown without access to Desktop, Documents and Downloads so personal files stay out of the docs. The Files screenshots use demo files with a search filter, so real personal filenames stay out of the docs.
 
 ## Cleanup
 
@@ -48,6 +48,38 @@ Files above the configured threshold, outside `~/Library`, `node_modules`, `.git
 - The threshold is configurable from Settings.
 - This screenshot is taken without access to Desktop, Documents and Downloads. Those folders are skipped, not missing.
 
+## Personal files
+
+![Personal files](screenshots/15-personal.png)
+
+The **Files** tab adds review-first profiles for Desktop, Downloads and Documents:
+
+- **Screenshots** older than 30 days.
+- **Installers** over 50 MB, older than 30 days.
+- **Archives** over 10 MB, older than 90 days.
+- **Temp files** such as `.crdownload`, `.part`, `.tmp`, `~$` Office locks and `.DS_Store`.
+- **Stale downloads** over 10 MB, older than 90 days.
+- **Large old files** over 500 MB, unchanged for 180 days.
+
+Every profile is a rule, not an automatic delete. Nothing is selected by default. The profile chips and search narrow the list. The lock button keeps a file and adds it to **Personal file exclusions**. Removal always moves files to the Trash.
+
+## AI suggestions
+
+![AI suggestions](screenshots/16-personal-ai.png)
+
+Smart sort is optional. Add an OpenAI-compatible endpoint and model in **Settings > AI suggestions**, for example a local Ollama or LM Studio server.
+
+- Only file names, extensions, sizes, ages and folder paths are sent. File contents are never read or uploaded.
+- Suggestions are `Keep`, `Review` or `Trash`. They are advisory; nothing is selected until you click **Select AI trash suggestions**.
+- That selection is limited to the visible search and profile, so hidden files cannot be swept in by accident.
+- The endpoint is off by default. Remote endpoints can use `CACHENOOK_AI_API_KEY`.
+
+## Trash confirmation
+
+![Personal trash confirmation](screenshots/17-personal-confirm.png)
+
+The confirmation lists every file and size. Files go to the macOS Trash, so they stay recoverable. On iCloud Desktop or Documents, macOS may use the iCloud Trash.
+
 ## Settings
 
 ![Settings](screenshots/06-settings.png)
@@ -56,6 +88,8 @@ Files above the configured threshold, outside `~/Library`, `node_modules`, `.git
 - Open at login.
 - Project folders and the large file threshold.
 - Automatic cleanup: day, time and inactivity window.
+- Personal file exclusions.
+- Optional AI endpoint and model.
 - Update manifest URL.
 
 ## Exclusions
@@ -93,8 +127,8 @@ Add a JSON manifest URL:
 
 ```json
 {
-  "version": "1.0.1",
-  "url": "https://example.com/CacheNook-1.0.1.dmg",
+  "version": "1.1.0",
+  "url": "https://example.com/CacheNook-1.1.0.dmg",
   "notes": "What changed"
 }
 ```
@@ -121,7 +155,9 @@ The whole interface, menu bar and scheduled notification switch between English 
 - Symlinks are resolved and rejected if they leave the root.
 - Dirty git repositories never reach the scheduler.
 - Cache roots only lose their contents, not the folder itself.
-- Large files and installers go through the Trash.
+- Large files, personal files and installers go through the Trash.
+- Personal files are never removed without selecting them and confirming.
+- Smart sort sends only metadata to the endpoint you configure, and only when you press it.
 - No telemetry and no network requests during a scan.
 
 ## Terminal

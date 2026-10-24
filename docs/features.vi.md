@@ -2,7 +2,7 @@
 
 CacheNook được xây quanh một ý tưởng: công cụ dọn dẹp phải hiểu các project trên ổ, không chỉ biết cache hệ thống.
 
-Ảnh chụp từ cùng một bản app ở các trạng thái quyền khác nhau. Ảnh Cleanup hiện đầy đủ nhóm System khi đã cấp Full Disk Access. Ảnh Large files được chụp khi chưa cấp quyền Desktop, Documents và Downloads để không lộ file cá nhân; các thư mục đó bị bỏ qua, không phải mất.
+Ảnh chụp từ cùng một bản app ở các trạng thái quyền khác nhau. Ảnh Cleanup hiện đầy đủ nhóm System khi đã cấp Full Disk Access. Ảnh Large files được chụp khi chưa cấp quyền Desktop, Documents và Downloads để không lộ file cá nhân; các thư mục đó bị bỏ qua, không phải mất. Ảnh tab Tệp dùng file demo và bộ lọc để không lộ tên file cá nhân.
 
 ## Dọn dẹp
 
@@ -48,6 +48,38 @@ Các file trên ngưỡng, ngoài `~/Library`, `node_modules`, `.git` và app bu
 - Ngưỡng chỉnh trong Cài đặt.
 - Ảnh này chụp khi chưa cấp quyền Desktop, Documents, Downloads. Các thư mục đó bị bỏ qua, không phải mất.
 
+## Tệp cá nhân
+
+![Tệp cá nhân](screenshots/15-personal.png)
+
+Tab **Tệp** thêm bộ profile xem trước cho Desktop, Downloads và Documents:
+
+- **Ảnh chụp** cũ hơn 30 ngày.
+- **Bộ cài** trên 50 MB, cũ hơn 30 ngày.
+- **Tệp nén** trên 10 MB, cũ hơn 90 ngày.
+- **Tệp tạm** như `.crdownload`, `.part`, `.tmp`, file khoá `~$` của Office và `.DS_Store`.
+- **Downloads cũ** trên 10 MB, cũ hơn 90 ngày.
+- **File lớn cũ** trên 500 MB, không thay đổi trong 180 ngày.
+
+Mỗi profile là một quy tắc, không tự xoá. Mặc định không chọn gì. Chip profile và ô tìm kiếm thu hẹp danh sách. Nút khoá giữ tệp và thêm vào **Loại trừ tệp cá nhân**. Xoá luôn chuyển vào Thùng rác.
+
+## Gợi ý AI
+
+![Gợi ý AI](screenshots/16-personal-ai.png)
+
+Sắp xếp bằng AI là tuỳ chọn. Thêm endpoint và model tương thích OpenAI trong **Cài đặt > Gợi ý AI**, ví dụ Ollama hoặc LM Studio chạy cục bộ.
+
+- Chỉ gửi tên, phần mở rộng, dung lượng, tuổi và đường dẫn thư mục. Không đọc hoặc tải nội dung file.
+- Gợi ý là `Giữ`, `Xem lại` hoặc `Xoá`. Chỉ mang tính tham khảo; không mục nào được chọn cho đến khi bấm **Chọn mục AI đề xuất xoá**.
+- Lựa chọn chỉ giới hạn trong bộ lọc và profile đang hiện, nên không thể quét nhầm file bị ẩn.
+- Endpoint mặc định tắt. Endpoint từ xa có thể dùng `CACHENOOK_AI_API_KEY`.
+
+## Xác nhận Thùng rác
+
+![Xác nhận Thùng rác](screenshots/17-personal-confirm.png)
+
+Hộp xác nhận liệt kê từng file và dung lượng. File vào Thùng rác của macOS nên vẫn khôi phục được. Với Desktop hoặc Documents đồng bộ iCloud, macOS có thể dùng Thùng rác iCloud.
+
 ## Cài đặt
 
 ![Settings](screenshots/06-settings.png)
@@ -56,6 +88,8 @@ Các file trên ngưỡng, ngoài `~/Library`, `node_modules`, `.git` và app bu
 - Mở khi đăng nhập.
 - Thư mục dự án và ngưỡng file lớn.
 - Tự động dọn: ngày, giờ, số ngày không hoạt động.
+- Loại trừ tệp cá nhân.
+- Endpoint và model AI tuỳ chọn.
 - URL manifest cập nhật.
 
 ## Loại trừ
@@ -93,8 +127,8 @@ Nhập URL manifest JSON:
 
 ```json
 {
-  "version": "1.0.1",
-  "url": "https://example.com/CacheNook-1.0.1.dmg",
+  "version": "1.1.0",
+  "url": "https://example.com/CacheNook-1.1.0.dmg",
   "notes": "Có gì mới"
 }
 ```
@@ -121,7 +155,9 @@ Toàn bộ giao diện, menu bar và thông báo đổi được giữa English 
 - Symlink được resolve và bị từ chối nếu trỏ ra ngoài root.
 - Repo git có thay đổi chưa commit không bao giờ vào job.
 - Cache chỉ mất nội dung, giữ lại thư mục gốc.
-- File lớn và bộ cài đi qua Thùng rác.
+- File lớn, tệp cá nhân và bộ cài đi qua Thùng rác.
+- Tệp cá nhân không bao giờ bị xoá nếu chưa chọn và xác nhận.
+- Sắp xếp bằng AI chỉ gửi metadata tới endpoint bạn cấu hình, và chỉ khi bạn bấm.
 - Không telemetry, không gọi mạng khi quét.
 
 ## Terminal

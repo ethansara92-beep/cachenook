@@ -30,9 +30,12 @@ In scope:
 - IPC input validation bypasses
 - LaunchAgent or launcher command injection
 - Renderer code execution
+- Sending file contents or unrelated data to an AI endpoint
 
 Out of scope:
 
 - Deleting files after the user confirms a preview, when the path is inside the allowlisted root
 - Denial of service from scanning a very large folder
+- Deleting personal files after the user selects them and confirms the Trash dialog
+- The privacy of an AI endpoint the user chooses to configure
 - Unsigned build warnings from Gatekeeper

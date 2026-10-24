@@ -6,11 +6,13 @@ const path = require('node:path');
 const { app, ipcMain, shell } = require('electron');
 
 const { createCancellation } = require('./cancel');
+const ai = require('./ai');
 const { createStore } = require('./config');
 const deep = require('./deep');
 const { cleanTargets } = require('./clean');
 const { hasFullDiskAccess } = require('./fda');
 const history = require('./history');
+const personal = require('./personal');
 const { scanLargeFiles } = require('./files');
 const { ARTIFACTS, scanProjects } = require('./projects');
 const { duBytes, rmrf } = require('./proc');
@@ -38,12 +40,14 @@ function registerIpc({ getWindow, onLanguageChange }) {
   let scanCtx = null;
   let projectCtx = null;
   let filesCtx = null;
+  let personalCtx = null;
   let cleaning = false;
 
   app.on('before-quit', () => {
     if (scanCtx) scanCtx.cancel();
     if (projectCtx) projectCtx.cancel();
     if (filesCtx) filesCtx.cancel();
+    if (personalCtx) personalCtx.cancel();
   });
 
   const send = (channel, payload) => {
@@ -249,6 +253,72 @@ function registerIpc({ getWindow, onLanguageChange }) {
   ipcMain.handle('files:cancel', () => {
     if (filesCtx) filesCtx.cancel();
     return true;
+  });
+
+  ipcMain.handle('personal:scan', async () => {
+    if (personalCtx) throw new Error('A personal file scan is already running');
+    const fullDiskAccess = await hasFullDiskAccess();
+    if (!fullDiskAccess) return { available: false, reason: 'fda' };
+
+    personalCtx = createCancellation();
+    const ctx = personalCtx;
+    try {
+      return await personal.scanPersonal({
+        exclude: store.load().personalExclude,
+        ctx,
+      });
+    } finally {
+      if (personalCtx === ctx) personalCtx = null;
+    }
+  });
+
+  ipcMain.handle('personal:cancel', () => {
+    if (personalCtx) personalCtx.cancel();
+    return true;
+  });
+
+  ipcMain.handle('personal:trash', async (_event, paths) => {
+    const requested = asStringArray(paths, 500);
+    const results = [];
+    let freed = 0;
+    let removed = 0;
+
+    for (const input of requested) {
+      try {
+        const target = await personal.assertPersonalFile(input);
+        const stat = await fs.stat(target);
+        await shell.trashItem(target);
+        freed += stat.size;
+        removed += 1;
+        results.push({ path: target, ok: true, bytes: stat.size });
+      } catch (error) {
+        results.push({ path: input, ok: false, error: error.message });
+      }
+    }
+
+    if (removed > 0) {
+      await history.append(app.getPath('userData'), {
+        freed,
+        items: removed,
+        source: 'personal',
+      });
+    }
+
+    return { results, freed, removed };
+  });
+
+  ipcMain.handle('personal:classify', async (_event, files) => {
+    if (!Array.isArray(files)) throw new Error('Expected a list of files');
+    const safe = files.slice(0, 200).filter(
+      (file) =>
+        file &&
+        typeof file === 'object' &&
+        typeof file.path === 'string' &&
+        typeof file.name === 'string' &&
+        Number.isFinite(Number(file.bytes)) &&
+        personal.ROOTS.some((root) => isInside(file.path, root)),
+    );
+    return ai.classify(safe, store.load());
   });
 
   ipcMain.handle('projects:clean', async (_event, paths) => {

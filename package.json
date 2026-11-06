@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
-    "@tabler/icons": "^3.34.0",
+    "@tabler/icons": "^3.50.0",
     "electron": "^45.0.0"
   },
   "repository": {
